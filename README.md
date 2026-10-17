@@ -1,8 +1,8 @@
-# media
+# kmedia
 
 > Full build record, setup steps and how to clone this project: see [SETUP.md](SETUP.md).
 
-Family photos and videos app, served at https://media.kneapps.fyi
+Kibbutz Nir Eliyahu photos and videos app, served at https://media.kneapps.fyi
 
 Stack: Next.js (App Router, TypeScript, Tailwind) on Vercel, Supabase for login, data and photo storage, YouTube for videos.
 
