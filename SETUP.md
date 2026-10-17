@@ -4,14 +4,14 @@ A full record of the `media.kneapps.fyi` project, written so a new conversation 
 can rebuild it, or clone it for another family/domain, without the original chat.
 
 > **kmedia (Kibbutz Nir Eliyahu) copy:** cloned from `kovals320/media` on 2026-10-17. Domain `media.kneapps.fyi`,
-> Supabase shared project `home` with prefix `kmedia_`. Server details in section 7 (IP, folders, users) still describe
-> the ORIGINAL server and will be updated once the new Immich server is set up.
+> Supabase shared project `home` with prefix `kmedia_`, its own Immich server (`kne-media`, 192.168.1.144).
+> Sections 3, 4 and 7 describe THIS deployment. Section 11 records how it was set up.
 
 ---
 
 ## 1. What the app is
 
-A public, read-only family media site (Hebrew, right-to-left, mobile-first):
+A public, read-only media site for Kibbutz Nir Eliyahu (site name `קיבוץ ניר אליהו - מדיה`) (Hebrew, right-to-left, mobile-first):
 
 - **Home**: two tiles, Photos and Films, each with a live total.
 - **Photos**: read from a home **Immich** server. One tile per year (newest first), year page is one
@@ -40,11 +40,11 @@ Stack: Next.js 16 (App Router, TypeScript), Tailwind v4, `@supabase/ssr`, fonts 
 | Service | What | Notes |
 |---|---|---|
 | GitHub | `kovals320/kmedia` | Vercel deploys every push to `main` |
-| Vercel | team "Apps" (`apps-2265`), project `media` | The Vercel connector in Claude could not create projects in this team (403), so the import was done in the browser |
-| Cloudflare | zone `kneapps.fyi` | `media` CNAME to Vercel (DNS only). `photos` = Cloudflare Tunnel to Immich |
+| Vercel | team "Apps" (`apps-2265`), project `kmedia` | The Vercel connector in Claude gets 403 on this team, so import, env vars and domain are done in the browser. Do NOT add the Supabase integration offered on import |
+| Cloudflare | zone `kneapps.fyi` | `media` CNAME to Vercel (DNS only). `photos` = Cloudflare Tunnel `kne-immich` to Immich |
 | Supabase | shared project `home` (`pjujibzoscawmstarerz`) | Shared with other apps, so **every table/function/bucket uses the `kmedia_` prefix** |
-| Immich | home server `192.168.1.253`, Ubuntu + Docker | Immich v3.3.3, port 2283 |
-| YouTube | playlist(s) on the family channel | Videos and playlists must be **Unlisted** (not Private) |
+| Immich | home server `kne-media`, `192.168.1.144`, user `kne`, Ubuntu + Docker | Immich v3, port 2283. SSH: `ssh kne@192.168.1.144` |
+| YouTube | kibbutz playlist(s) | Videos and playlists must be **Unlisted** (not Private). API key from Google Cloud project `media-dorh` (shared with the media site) |
 
 ## 4. Environment variables (Vercel, all environments)
 
@@ -53,7 +53,7 @@ Stack: Next.js 16 (App Router, TypeScript), Tailwind v4, `@supabase/ssr`, fonts 
 | `NEXT_PUBLIC_SUPABASE_URL` | Config | `https://<project>.supabase.co` |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Config | Supabase publishable key (`sb_publishable_...`) |
 | `YOUTUBE_API_KEY` | **Secret** | Google Cloud key restricted to YouTube Data API v3, no application restriction |
-| `IMMICH_URL` | Config | `https://photos.<domain>` |
+| `IMMICH_URL` | Config | `https://photos.kneapps.fyi` |
 | `IMMICH_API_KEY` | **Secret** | Immich key with read-only permissions (see 7) |
 
 `/api/health` checks Supabase, YouTube and Immich.
@@ -136,10 +136,13 @@ The admin signs in with an existing Supabase user (email + password). There is n
 ## 7. Immich (photos)
 
 **Server layout**
-- Photos live on the server in `/home/dor/Pictures/<year>/...`, mounted **read-only** into Immich:
-  `- /home/dor/Pictures:/mnt/external-pictures:ro` in `~/immich-app/docker-compose.yml`.
-- One **External Library per year**, named exactly the year (`2005`, `2006`, ...), import path `/mnt/external-pictures/<year>`.
+- Photos live on the server in `/home/kne/Pictures/<year>/...` (1964–2022, ~34,300 photos, ~100 GB), mounted **read-only** into Immich:
+  `- ${EXTERNAL_PATH}:/usr/src/app/external:ro` in `~/immich-app/docker-compose.yml`, with `EXTERNAL_PATH=/home/kne/Pictures` in `~/immich-app/.env`.
+- One **External Library per year**, named exactly the year (`1964`, `1965`, ...), import path `/usr/src/app/external/<year>`.
   The app only shows external libraries whose name is a year, so phone-backup uploads stay private.
+  `~/Pictures` also has `README.txt`, `exiftool.exe` and `exiftool_files/`; they are not in any library.
+- A new year folder needs a new library: Administration → External Libraries → Create, name = the year,
+  import path `/usr/src/app/external/<year>`, then scan.
 
 **Users**: one admin user that owns the libraries. Photos belong to the user who owns the library; deleting a user deletes its photos.
 To switch the admin's email, edit the existing user's email (don't create a new user and delete the old one).
@@ -152,7 +155,8 @@ To switch the admin's email, edit the existing user's email (don't create a new 
 sudo docker run -d --name cloudflared --restart unless-stopped cloudflare/cloudflared:latest \
   tunnel --no-autoupdate run --token <token from the Cloudflare page>
 ```
-Then Configure → Routes → Add published application: subdomain `photos`, domain `<domain>`, service `http://192.168.1.253:2283`.
+Then Configure → Routes → Add published application: subdomain `photos`, domain `kneapps.fyi`, service `http://192.168.1.144:2283`.
+(Use the server's LAN address, not `localhost`: cloudflared runs in its own container.) Tunnel name `kne-immich`, container name `cloudflared`.
 (Free plan limits each upload through the tunnel to 100 MB; upload large files from inside the home network.)
 
 **How the app dates photos** (`src/lib/immich.ts`)
@@ -164,7 +168,7 @@ Then Configure → Routes → Add published application: subdomain `photos`, dom
 - Lists cached 1 hour (tag `immich`); the admin "refresh content" button clears it.
 
 **Day-to-day routine**
-- Add photos: copy into the year folder (`scp "C:\path\*" dor@192.168.1.253:/home/dor/Pictures/2026/`), Immich → Administration →
+- Add photos: copy into the year folder (`scp "C:\path\*" kne@192.168.1.144:/home/kne/Pictures/2022/`), Immich → Administration →
   External Libraries → **Scan All Libraries**, then "refresh content" in the app.
 - Remove photos from the site permanently: delete in Immich, run `~/hide-deleted.sh` (answer lowercase `y`), then scan.
 - Bring back a photo deleted in the past: empty Immich's trash first (or restore it), then copy the file back and scan.
@@ -173,11 +177,11 @@ Then Configure → Routes → Add published application: subdomain `photos`, dom
 **`~/hide-deleted.sh`** (moves files that are in Immich's trash out of the scanned folder, so a scan can't bring them back):
 ```bash
 #!/bin/bash
-SRC=/home/dor/Pictures
-DEST=/home/dor/Pictures-hidden
+SRC=/home/kne/Pictures
+DEST=/home/kne/Pictures-hidden
 LIST=$(mktemp)
-sudo docker exec immich_postgres psql -U postgres -d immich -At -c "select \"originalPath\" from asset where \"deletedAt\" is not null and \"originalPath\" like '/mnt/external-pictures/%';" \
-  | sed 's#^/mnt/external-pictures/##' \
+sudo docker exec immich_postgres psql -U postgres -d immich -At -c "select \"originalPath\" from asset where \"deletedAt\" is not null and \"originalPath\" like '/usr/src/app/external/%';" \
+  | sed 's#^/usr/src/app/external/##' \
   | while IFS= read -r f; do if [ -f "$SRC/$f" ]; then printf '%s\n' "$f"; fi; done > "$LIST"
 COUNT=$(wc -l < "$LIST")
 if [ "$COUNT" -eq 0 ]; then echo "No new deleted photos to move."; rm -f "$LIST"; exit 0; fi
@@ -190,11 +194,13 @@ echo "Moved $COUNT photos. Now run 'Scan All Libraries' in Immich."
 rm -f "$LIST"
 ```
 
+(`hide-deleted.sh` is not installed on this server yet; create it from the block above when first needed.)
+
 **Backup** to an external disk (NTFS, mounted at `/mnt/backup`, into its own folder only):
 ```bash
 sudo mkdir -p /mnt/backup && sudo mount /dev/sda1 /mnt/backup
 sudo mkdir -p /mnt/backup/family-media-backup/immich-app
-sudo rsync -rt --info=progress2 /home/dor/Pictures /home/dor/Pictures-hidden /mnt/backup/family-media-backup/
+sudo rsync -rt --info=progress2 /home/kne/Pictures /home/kne/Pictures-hidden /mnt/backup/family-media-backup/
 sudo cp ~/immich-app/docker-compose.yml ~/immich-app/.env /mnt/backup/family-media-backup/immich-app/
 sudo cp ~/hide-deleted.sh /mnt/backup/family-media-backup/
 ```
@@ -229,6 +235,31 @@ sudo cp ~/hide-deleted.sh /mnt/backup/family-media-backup/
 ## 10. Working preferences of the owner (Dor)
 
 - Writes in Hebrew; **replies in English**.
+- Setup work in general: one step at a time, explained, wait for confirmation.
 - For server / SSH work: **one step at a time**, wait for the output before the next step.
 - For app features: build the whole thing and report when done (don't ask at every step).
 - Tables of each project get the project's prefix (`kmedia_` here).
+
+## 11. How the kmedia deployment was set up (2026-10-17)
+
+1. GitHub repo `kovals320/kmedia` created empty; code copied from `media`, renamed (`kmedia_` prefix, site name), pushed.
+2. Supabase (`home`): migration `kmedia_initial` = section 5 with the `kmedia_` prefix, admin `dor@kne.org.il` (same Supabase user as media).
+   Redirect URL `https://media.kneapps.fyi/**` added.
+3. Immich had ONE library `Photos` over the whole folder (no favorites, albums or named people), so it was deleted and
+   replaced by one library per year, through the API with a temporary all-permission key (deleted afterwards):
+   ```bash
+   read -rsp "Paste key: " KEY; echo
+   OWNER=<ownerId from GET /api/libraries>
+   for y in $(ls ~/Pictures | grep -E '^[0-9]{4}$'); do
+     curl -s -o /dev/null -w "$y %{http_code}\n" -X POST -H "x-api-key: $KEY" -H "Content-Type: application/json" \
+       -d "{\"ownerId\":\"$OWNER\",\"name\":\"$y\",\"importPaths\":[\"/usr/src/app/external/$y\"]}" http://localhost:2283/api/libraries
+   done
+   for id in $(curl -s -H "x-api-key: $KEY" http://localhost:2283/api/libraries | grep -o '"id":"[^"]*"' | cut -d'"' -f4); do
+     curl -s -o /dev/null -X POST -H "x-api-key: $KEY" http://localhost:2283/api/libraries/$id/scan
+   done
+   unset KEY
+   ```
+   App key `kmedia-app`: read-only permissions (section 7).
+4. Cloudflare Tunnel `kne-immich` → `photos.kneapps.fyi` → `http://192.168.1.144:2283`.
+5. Vercel project `kmedia` (team Apps), 5 env vars, domain `media.kneapps.fyi` (CNAME, DNS only).
+6. Playlist added on the admin page. `/api/health` all connected.
