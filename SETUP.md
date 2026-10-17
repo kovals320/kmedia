@@ -127,7 +127,7 @@ The admin signs in with an existing Supabase user (email + password). There is n
 
 - Playlists (and the videos in them) must be **Unlisted** or Public. Private ones can't be read with an API key and are skipped.
 - **Sorting** = the year written in the title (`1950–2099`, anywhere in the title). Titles without a year come first.
-  Within a year, by upload date. YouTube keeps no "filmed on" date (it strips file metadata; "Recording date" is usually empty).
+  Within a year, alphabetically by title (the year itself is ignored), then by upload date. YouTube keeps no "filmed on" date (it strips file metadata; "Recording date" is usually empty).
 - The app removes duplicates by video ID. YouTube's playlist count includes duplicates and private videos, so it is often higher.
   Bulk "Add to playlist" in YouTube Studio adds duplicates; a clean way is to create a fresh playlist from Studio → Content → select all → Add to playlist → new.
 - Videos from other channels: save them to one of your playlists. If the title has no year, set a display title on the admin page.
