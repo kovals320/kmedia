@@ -135,7 +135,7 @@ function Viewer({
       role="dialog"
       aria-modal="true"
       aria-label={`תמונה ${index + 1} מתוך ${photos.length}`}
-      className="fixed inset-0 z-50 flex select-none flex-col bg-[#0d1620] text-white"
+      className="fixed inset-0 z-50 flex select-none flex-col bg-[#111a12] text-white"
       onKeyDown={(e) => {
         // RTL: left arrow moves forward, right arrow goes back.
         if (e.key === "ArrowLeft") next();

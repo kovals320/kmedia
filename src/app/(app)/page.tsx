@@ -65,13 +65,13 @@ export default async function Home() {
           <div aria-hidden className="pointer-events-none absolute inset-x-0 top-6 flex justify-center sm:top-10">
             <div className="relative h-36 w-32 sm:h-48 sm:w-40">
               <div className="print-left absolute inset-0 rounded-md bg-print p-2 pb-7 shadow-[0_8px_20px_-8px_rgba(80,50,0,0.45)]">
-                <div className="h-full w-full rounded-sm bg-[linear-gradient(160deg,#9cc5a1,#5b8f6a)]" />
+                <div className="h-full w-full rounded-sm bg-[linear-gradient(160deg,#b9c98a,#6b8a46)]" />
               </div>
               <div className="print-right absolute inset-0 rounded-md bg-print p-2 pb-7 shadow-[0_8px_20px_-8px_rgba(80,50,0,0.45)]">
-                <div className="h-full w-full rounded-sm bg-[linear-gradient(200deg,#f7a78b,#c9605a)]" />
+                <div className="h-full w-full rounded-sm bg-[linear-gradient(200deg,#f0d79a,#d4a85a)]" />
               </div>
               <div className="absolute inset-0 rounded-md bg-print p-2 pb-7 shadow-[0_10px_24px_-8px_rgba(80,50,0,0.5)] transition-transform duration-300 group-hover:-translate-y-1.5">
-                <div className="h-full w-full rounded-sm bg-[linear-gradient(180deg,#8fc3ea,#3f7fb7_70%,#e9cf8c_70%,#d9b468)]" />
+                <div className="h-full w-full rounded-sm bg-[linear-gradient(180deg,#bcd8e6,#8fb8cc_58%,#a9b86a_58%,#6f8f3e)]" />
               </div>
             </div>
           </div>

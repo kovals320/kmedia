@@ -101,7 +101,7 @@ function Player({
       role="dialog"
       aria-modal="true"
       aria-label={video.title}
-      className="fixed inset-0 z-50 flex flex-col bg-[#0d1620] text-white"
+      className="fixed inset-0 z-50 flex flex-col bg-[#111a12] text-white"
       onKeyDown={(e) => {
         // RTL: left arrow moves forward, right arrow goes back.
         if (e.key === "ArrowLeft" && hasNext) onIndex(index + 1);

@@ -1,14 +1,16 @@
 @import "tailwindcss";
 
 @theme {
-  --color-paper: #f6f7f2;
-  --color-ink: #1d2b36;
-  --color-muted: #66737e;
-  --color-sun: #f2c14e;
-  --color-sun-deep: #e0a526;
-  --color-lake: #2f5d8c;
-  --color-lake-deep: #234a72;
-  --color-print: #fffdf7;
+  /* Kibbutz Nir Eliyahu palette: wheat paper, field green, clay.
+     Token names are shared with the family media app (sun = warm accent, lake = main color). */
+  --color-paper: #f4efe3;
+  --color-ink: #23301f;
+  --color-muted: #62675b;
+  --color-sun: #e08a54;
+  --color-sun-deep: #c56f3b;
+  --color-lake: #3f6b3a;
+  --color-lake-deep: #2f5430;
+  --color-print: #fffcf2;
 
   --font-display: var(--font-secular), "Secular One", system-ui, sans-serif;
   --font-sans: var(--font-assistant), "Assistant", system-ui, sans-serif;
