@@ -54,6 +54,13 @@ and the three gradient "prints" on the home page `src/app/(app)/page.tsx`).
 | `print` | `#fffdf7` | `#fffcf2` |
 | viewer background | `#0d1620` | `#111a12` |
 
+**Install as an app (PWA):** `src/app/manifest.ts` (name, short name `מדיה ניר אליהו`, colors), icons in `public/`
+(`icon-192/512.png`, `icon-maskable-512.png`, `apple-touch-icon.png`, `favicon-32.png`: two tilted tiles, clay with a photo
+mark and green with a play mark), `public/sw.js` (does nothing but make it installable; caches nothing, so content is always fresh),
+and `src/components/InstallPrompt.tsx`: a banner on phones only. Android/Chrome gets an "התקנה" button; iPhone gets
+"Share → Add to Home Screen" instructions (Safari has no install API). "Not now" hides it for 14 days (localStorage);
+never shown inside the installed app. A copy for another site must redraw the icons and change the names.
+
 Keep text contrast at least 4.5:1 (checked for kmedia: ink/paper 12.1, white/lake 6.2, ink/sun 5.2).
 
 ## 3. Accounts and where things live
