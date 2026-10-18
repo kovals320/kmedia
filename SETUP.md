@@ -7,6 +7,10 @@ can rebuild it, or clone it for another family/domain, without the original chat
 > Supabase shared project `home` with prefix `kmedia_`, its own Immich server (`kne-media`, 192.168.1.144).
 > Sections 3, 4 and 7 describe THIS deployment. Section 11 records how it was set up.
 
+> **Starting a new conversation with this file:** read sections 10 (how Dor likes to work), 9 and 12 (gotchas),
+> and 3 (accounts). The code itself is in the public repos `kovals320/kmedia` and `kovals320/media`:
+> clone them to read or copy code. For a NEW app, pick a new table prefix that is not taken (section 12).
+
 ---
 
 ## 1. What the app is
@@ -34,6 +38,23 @@ GitHub repo ──push──> Vercel (Next.js) ──> media.kneapps.fyi   (Clou
 ```
 
 Stack: Next.js 16 (App Router, TypeScript), Tailwind v4, `@supabase/ssr`, fonts Secular One + Assistant.
+
+**Colors** are defined once in `src/app/globals.css` (`@theme`) and used everywhere through the token names
+(`paper`, `ink`, `muted`, `sun`, `sun-deep`, `lake`, `lake-deep`, `print`), so a copy gets its own look by editing that block
+(plus `themeColor` in `layout.tsx`, the dark viewer background `bg-[#...]` in `VideoBrowser.tsx` / `YearView.tsx`,
+and the three gradient "prints" on the home page `src/app/(app)/page.tsx`).
+
+| Token | media (family) | kmedia (kibbutz) |
+|---|---|---|
+| `paper` (background) | `#f6f7f2` cool off-white | `#f4efe3` wheat cream |
+| `ink` (text) | `#1d2b36` navy | `#23301f` dark olive |
+| `muted` | `#66737e` | `#62675b` |
+| `sun` / `sun-deep` (Photos tile, warm accent) | `#f2c14e` / `#e0a526` yellow | `#e08a54` / `#c56f3b` clay |
+| `lake` / `lake-deep` (Films tile, buttons) | `#2f5d8c` / `#234a72` blue | `#3f6b3a` / `#2f5430` field green |
+| `print` | `#fffdf7` | `#fffcf2` |
+| viewer background | `#0d1620` | `#111a12` |
+
+Keep text contrast at least 4.5:1 (checked for kmedia: ink/paper 12.1, white/lake 6.2, ink/sun 5.2).
 
 ## 3. Accounts and where things live
 
@@ -207,15 +228,18 @@ sudo cp ~/hide-deleted.sh /mnt/backup/family-media-backup/
 
 ## 8. Cloning this project for another family / domain
 
-1. **GitHub**: new repo, copy this code (everything except `.git`).
+1. **GitHub**: Dor creates the repo in the browser (github.com/new, owner `kovals320`, **empty**: no README/.gitignore/license).
+   Claude attaches it with push access, copies this code (everything except `.git`) and pushes to `main`.
 2. **Change in the code**:
    - Hebrew site name `קיבוץ ניר אליהו - מדיה` (home title, `layout.tsx` metadata, page titles).
    - Admin email in the Supabase migration.
    - Table prefix if sharing a Supabase project with this app (e.g. `media2_`): rename tables/functions in SQL **and** in the code
      (`grep -rn "kmedia_" src`). With a new, separate Supabase project the prefix can stay.
    - `src/lib/immich.ts`: library names must still be years; adjust if the other server is organised differently.
+   - Colors: the `@theme` block (section 2), so it doesn't look identical to the other sites.
+   - `package.json` name, README title.
 3. **Supabase**: new project (or the shared one with a new prefix) → run the SQL in section 5 → add the redirect URL.
-4. **Vercel**: import the repo, add the 5 environment variables (section 4).
+4. **Vercel**: import the repo (team Apps), add the 5 environment variables (section 4), **skip the Supabase integration** it offers, Deploy.
 5. **Cloudflare**: on the other domain, add the Vercel domain in Vercel, then the CNAME it asks for (DNS only).
    Create a new tunnel for the other Immich server (`photos.<other domain>`).
 6. **Immich on the other computer**: external libraries per year, read-only mount, read-only API key.
@@ -263,3 +287,25 @@ sudo cp ~/hide-deleted.sh /mnt/backup/family-media-backup/
 4. Cloudflare Tunnel `kne-immich` → `photos.kneapps.fyi` → `http://192.168.1.144:2283`.
 5. Vercel project `kmedia` (team Apps), 5 env vars, domain `media.kneapps.fyi` (CNAME, DNS only).
 6. Playlist added on the admin page. `/api/health` all connected.
+
+## 12. Shared accounts: what exists, and gotchas for the next app (as of 2026-10-18)
+
+**Supabase project `home` (`pjujibzoscawmstarerz`, eu-central-1) is shared by all of Dor's apps.** Prefixes in use:
+`home_`, `sport_`, `sec_`, `shirim3_`, `media_`, `kmedia_`. A new app takes a new, unused prefix for every table,
+function, policy and storage bucket. Free Supabase plans allow only 2 active projects, so sharing is the default.
+Each app adds its own `https://<domain>/**` under Authentication → URL Configuration → Redirect URLs; never change the Site URL.
+
+**GitHub** `kovals320`: repos `media`, `kmedia`, `sec`, `home`, `sport`, `shirim3`, `ff` (all public).
+**Domains** on Cloudflare: `dorh.fyi` (family), `kneapps.fyi` (kibbutz). Sites go on subdomains with a Vercel CNAME, DNS only.
+**Google Cloud** project `media-dorh`: YouTube Data API v3 enabled; its API key is used by both media sites.
+
+What worked / didn't from Claude's side (cloud session):
+- `gh repo list` and account-wide GitHub API calls are blocked. Public repos can be cloned directly; a new repo must be
+  attached (add_repo with push access) before pushing. Claude cannot create GitHub repos; Dor creates them.
+- The Vercel connector returns 403 on team Apps (`apps-2265`), so Vercel work (import, env vars, domains, redeploy) is done
+  by Dor in the browser; Claude gives exact names/values. Its `search_repo` tool can still list the GitHub repos.
+- The Supabase connector works: list tables, apply migrations, read publishable keys.
+- The sites block crawlers (robots), so Claude can't fetch `/api/health`; Dor opens it and pastes the result.
+- Immich admin work over SSH is easiest through Immich's REST API with a temporary API key read with
+  `read -rsp` (never pasted into the chat), deleted at the end. Keys and tokens never go in the chat.
+- Cloudflare Tunnel route to Immich must use the server's LAN IP, not `localhost`.
