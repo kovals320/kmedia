@@ -153,6 +153,8 @@ The admin signs in with an existing Supabase user (email + password). There is n
   Bulk "Add to playlist" in YouTube Studio adds duplicates; a clean way is to create a fresh playlist from Studio → Content → select all → Add to playlist → new.
 - Videos from other channels: save them to one of your playlists. If the title has no year, set a display title on the admin page.
 - Results are cached 30 minutes (tag `youtube`); the admin "refresh content" button clears it.
+- **Search** on the Films page (in the browser, no server call): every word must appear in the title. Hebrew is matched loosely:
+  no niqqud, final letters = regular letters (סרטון finds סרטונים), quotes ignored (טו = ט"ו). Next/previous in the player move through the results.
 
 ## 7. Immich (photos)
 

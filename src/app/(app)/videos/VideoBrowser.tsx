@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { yearInTitle } from "@/lib/sort";
 import type { Video } from "@/lib/youtube";
 import { useOverlay } from "@/lib/useOverlay";
@@ -20,10 +20,37 @@ function groupByYear(videos: Video[]): Group[] {
   return groups;
 }
 
+// Search text, normalised so Hebrew matches loosely: no niqqud, final letters = regular
+// letters (סרטון finds סרטונים), no quotes/punctuation, lower-case English.
+const FINAL_LETTERS: Record<string, string> = { "ך": "כ", "ם": "מ", "ן": "נ", "ף": "פ", "ץ": "צ" };
+function normalize(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[\u0591-\u05BD\u05BF-\u05C7]/g, "") // niqqud and cantillation (keeps the maqaf ־ as a separator)
+    .replace(/["'`\u05F3\u05F4]/g, "") // quotes, geresh, gershayim: ט"ו = טו
+    .replace(/[ךםןףץ]/g, (c) => FINAL_LETTERS[c])
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim();
+}
+
+/** Every word of the query must appear somewhere in the title. */
+function matches(title: string, words: string[]): boolean {
+  const t = normalize(title);
+  return words.every((w) => t.includes(w));
+}
+
 export function VideoBrowser({ videos, initialIndex }: { videos: Video[]; initialIndex: number | null }) {
   const [current, setCurrent] = useState<number | null>(null);
+  const [query, setQuery] = useState("");
   const { markOpened, close } = useOverlay(current !== null, () => setCurrent(null));
-  const groups = groupByYear(videos);
+
+  const words = useMemo(() => normalize(query).split(" ").filter(Boolean), [query]);
+  // The player's next/previous move through the search results, not the whole list.
+  const shown = useMemo(
+    () => (words.length === 0 ? videos : videos.filter((v) => matches(v.title, words))),
+    [videos, words],
+  );
+  const groups = groupByYear(shown);
 
   // Opened from a shared link (/videos?v=ID): start playing that video.
   useEffect(() => {
@@ -40,6 +67,59 @@ export function VideoBrowser({ videos, initialIndex }: { videos: Video[]; initia
 
   return (
     <>
+      <div role="search" className="mt-6 sm:mt-8">
+        <label htmlFor="video-search" className="sr-only">
+          חיפוש סרט לפי שם
+        </label>
+        <div className="relative max-w-xl">
+          <svg
+            aria-hidden
+            viewBox="0 0 24 24"
+            className="pointer-events-none absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 fill-none stroke-muted stroke-2"
+          >
+            <circle cx="11" cy="11" r="7" />
+            <path d="M20 20l-3.5-3.5" strokeLinecap="round" />
+          </svg>
+          <input
+            id="video-search"
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setQuery("");
+              if (e.key === "Enter") e.currentTarget.blur(); // phones: hide the keyboard to see results
+            }}
+            placeholder="חיפוש לפי שם הסרט"
+            enterKeyHint="search"
+            autoComplete="off"
+            className="w-full rounded-2xl border-2 border-ink/10 bg-white py-3 pe-12 ps-12 text-lg outline-none transition-colors placeholder:text-muted focus:border-lake [&::-webkit-search-cancel-button]:hidden"
+          />
+          {query && (
+            <button
+              type="button"
+              onClick={() => setQuery("")}
+              aria-label="ניקוי החיפוש"
+              className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full p-2 text-muted transition-colors hover:bg-ink/5 hover:text-ink"
+            >
+              <svg aria-hidden viewBox="0 0 24 24" className="h-5 w-5 fill-none stroke-current stroke-2">
+                <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
+              </svg>
+            </button>
+          )}
+        </div>
+        {words.length > 0 && (
+          <p role="status" className="mt-2 text-muted">
+            {shown.length === 0 ? "" : shown.length === 1 ? "נמצא סרט אחד" : `נמצאו ${shown.length} סרטים`}
+          </p>
+        )}
+      </div>
+
+      {words.length > 0 && shown.length === 0 && (
+        <p className="mt-6 rounded-[2rem] border-2 border-dashed border-lake/40 p-8 text-center text-lg text-muted">
+          לא נמצאו סרטים בשם הזה.
+        </p>
+      )}
+
       {groups.map((g) => (
         <section key={g.label} className="mt-10 sm:mt-12" aria-label={g.label}>
           <h2 className="mb-4 flex items-baseline gap-3">
@@ -72,8 +152,8 @@ export function VideoBrowser({ videos, initialIndex }: { videos: Video[]; initia
         </section>
       ))}
 
-      {current !== null && (
-        <Player videos={videos} index={current} onIndex={setCurrent} onClose={close} />
+      {current !== null && shown[current] && (
+        <Player videos={shown} index={current} onIndex={setCurrent} onClose={close} />
       )}
     </>
   );
