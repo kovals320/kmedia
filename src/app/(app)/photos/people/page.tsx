@@ -1,10 +1,13 @@
 import { BackLink } from "@/components/BackLink";
 import { getPeople, type PersonSummary } from "@/lib/immich";
 import { PeopleGrid } from "./PeopleGrid";
+import { notFound } from "next/navigation";
+import { showPeople } from "@/lib/settings";
 
 export const metadata = { title: "אנשים – קיבוץ ניר אליהו - מדיה" };
 
 export default async function PeoplePage() {
+  if (!(await showPeople())) notFound(); // turned off on the admin page
   let people: PersonSummary[] | null;
   try {
     people = await getPeople();

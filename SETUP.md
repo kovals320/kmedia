@@ -145,6 +145,19 @@ create policy "kmedia_video_titles public read" on public.kmedia_video_titles
   for select to anon, authenticated using (true);
 create policy "kmedia_video_titles managed by admins" on public.kmedia_video_titles
   for all to authenticated using (public.kmedia_is_admin()) with check (public.kmedia_is_admin());
+
+-- Site switches set on the admin page (added 2026-10-24, migration kmedia_settings).
+create table public.kmedia_settings (
+  key text primary key check (key ~ '^[a-z_]{1,40}$'),
+  value jsonb not null,
+  updated_at timestamptz not null default now()
+);
+alter table public.kmedia_settings enable row level security;
+create policy "kmedia_settings public read" on public.kmedia_settings
+  for select to anon, authenticated using (true);
+create policy "kmedia_settings managed by admins" on public.kmedia_settings
+  for all to authenticated using (public.kmedia_is_admin()) with check (public.kmedia_is_admin());
+insert into public.kmedia_settings (key, value) values ('show_people', 'false'::jsonb);
 ```
 
 Supabase Auth: add `https://<domain>/**` to **Authentication → URL Configuration → Redirect URLs**
@@ -195,7 +208,10 @@ Then Configure → Routes → Add published application: subdomain `photos`, dom
 - Photos page: an "אנשים" row (most photos first) above the years; `/photos/people`: everyone A–Z with a search box (13+ people);
   `/photos/people/<id>`: that person's photos, newest first, same viewer and share links as a year.
 - The face picture is the one chosen in Immich; it updates (new address `?v=`) when changed there. Cached 1 hour like the rest.
-- Public, like the rest of the site (owner's decision, 2026-10-24).
+- **Off by default.** Switch on the admin page ("אנשים בעמוד התמונות"), stored in Supabase table `kmedia_settings`
+  (`show_people`, public read, admin write; `src/lib/settings.ts`, cached 1 hour, cleared when the switch changes).
+  When off: no row on the Photos page, `/photos/people*` is 404, and face pictures are refused. If the setting
+  can't be read, it counts as off. When on, it is public like the rest of the site.
 
 **How the app dates photos** (`src/lib/immich.ts`)
 1. A camera wrote real capture info (EXIF make/model present): Immich's date.

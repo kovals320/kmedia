@@ -1,7 +1,8 @@
 import { BackLink } from "@/components/BackLink";
 import { requireAdmin } from "@/lib/auth";
 import { getFolderMismatches, type FolderMismatch } from "@/lib/immich";
-import { AddPlaylistForm, RefreshYouTubeButton, RemoveButton, VideoTitleForm } from "./Forms";
+import { AddPlaylistForm, RefreshYouTubeButton, RemoveButton, ShowPeopleToggle, VideoTitleForm } from "./Forms";
+import { showPeople } from "@/lib/settings";
 import { removePlaylist, removeVideoTitle } from "./actions";
 import { loadVideos } from "../videos/loadVideos";
 import { yearInTitle } from "@/lib/sort";
@@ -47,8 +48,23 @@ export default async function AdminPage() {
         <RefreshYouTubeButton />
       </section>
       <VideoTitlesSection />
+      <PeopleSection />
       <PhotoDatesReport />
     </main>
+  );
+}
+
+async function PeopleSection() {
+  const on = await showPeople();
+  return (
+    <section className="mt-12" aria-labelledby="people-h">
+      <h2 id="people-h" className="font-display text-2xl sm:text-3xl">אנשים בעמוד התמונות</h2>
+      <p className="mt-1 text-muted">
+        שורת פנים מעל השנים, ודף לכל אדם עם התמונות שבהן הוא מופיע. מופיעים רק אנשים שקיבלו שם ב-Immich
+        (Explore → People).
+      </p>
+      <ShowPeopleToggle on={on} />
+    </section>
   );
 }
 

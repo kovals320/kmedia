@@ -3,10 +3,12 @@ import { notFound } from "next/navigation";
 import { BackLink } from "@/components/BackLink";
 import { getPersonPhotos } from "@/lib/immich";
 import { YearView } from "../../[year]/YearView";
+import { showPeople } from "@/lib/settings";
 
 type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ p?: string }> };
 
 async function load(id: string) {
+  if (!(await showPeople())) return { person: null, failed: false }; // turned off on the admin page
   try {
     return { person: await getPersonPhotos(id), failed: false };
   } catch {

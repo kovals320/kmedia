@@ -4,6 +4,7 @@ import { revalidatePath, updateTag } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
 import { IMMICH_CACHE_TAG } from "@/lib/immich";
 import { getPlaylistInfo, YOUTUBE_CACHE_TAG } from "@/lib/youtube";
+import { SETTINGS_CACHE_TAG } from "@/lib/settings";
 
 export type FormState = { error: string | null; ok: string | null };
 
@@ -105,4 +106,15 @@ export async function removeVideoTitle(videoId: string) {
   if (!VIDEO_ID.test(videoId)) return;
   await supabase.from("kmedia_video_titles").delete().eq("video_id", videoId);
   refreshVideoPages();
+}
+
+/** Turns the People (faces) section of the Photos page on or off. */
+export async function setShowPeople(show: boolean) {
+  const { supabase } = await requireAdmin();
+  await supabase
+    .from("kmedia_settings")
+    .upsert({ key: "show_people", value: show, updated_at: new Date().toISOString() });
+  updateTag(SETTINGS_CACHE_TAG);
+  revalidatePath("/photos", "layout");
+  revalidatePath("/admin");
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useTransition } from "react";
-import { addPlaylist, refreshFromYouTube, setVideoTitle, type FormState } from "./actions";
+import { addPlaylist, refreshFromYouTube, setShowPeople, setVideoTitle, type FormState } from "./actions";
 
 const initial: FormState = { error: null, ok: null };
 const inputClass =
@@ -93,5 +93,35 @@ export function VideoTitleForm({
       </button>
       <Feedback state={state} />
     </form>
+  );
+}
+
+/** On/off switch for the People section of the Photos page. */
+export function ShowPeopleToggle({ on }: { on: boolean }) {
+  const [pending, startTransition] = useTransition();
+  return (
+    <div className="mt-4 flex flex-wrap items-center gap-3 rounded-2xl bg-white p-4">
+      <div className="min-w-0 flex-[1_1_16rem]">
+        <p className="font-semibold">{on ? "מוצג באתר" : "מוסתר"}</p>
+        <p className="text-muted">
+          {on
+            ? "כל מי שיש לו את הקישור רואה את הפנים והשמות."
+            : "אף אחד לא רואה את הפנים והשמות, גם לא דרך קישור ישיר."}
+        </p>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={on}
+        aria-label="הצגת אנשים בעמוד התמונות"
+        disabled={pending}
+        onClick={() => startTransition(() => setShowPeople(!on))}
+        className={`relative h-9 w-16 shrink-0 rounded-full transition-colors disabled:opacity-60 ${on ? "bg-lake" : "bg-ink/20"}`}
+      >
+        <span
+          className={`absolute top-1 h-7 w-7 rounded-full bg-white shadow transition-all ${on ? "left-1" : "left-8"}`}
+        />
+      </button>
+    </div>
   );
 }

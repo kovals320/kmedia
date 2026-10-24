@@ -3,16 +3,19 @@ import { Suspense } from "react";
 import { BackLink } from "@/components/BackLink";
 import { getYears, type YearSummary } from "@/lib/immich";
 import { PeopleRow, PeopleRowFallback } from "./PeopleRow";
+import { showPeople } from "@/lib/settings";
 
 export const metadata = { title: "תמונות – קיבוץ ניר אליהו - מדיה" };
 
 export default async function PhotosPage() {
   let years: YearSummary[] | null = null;
+  const peopleOn = showPeople(); // switch on the admin page
   try {
     years = await getYears();
   } catch {
     years = null;
   }
+  const withPeople = await peopleOn;
 
   return (
     <main className="mx-auto w-full max-w-6xl px-5 pb-12 pt-6 sm:px-8 sm:pt-10">
@@ -36,11 +39,15 @@ export default async function PhotosPage() {
         </p>
       ) : (
         <>
-        <Suspense fallback={<PeopleRowFallback />}>
-          <PeopleRow />
-        </Suspense>
-        <h2 className="mt-10 font-display text-3xl">שנים</h2>
-        <ul className="mt-4 grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 sm:gap-x-5 lg:grid-cols-4">
+        {withPeople && (
+          <>
+            <Suspense fallback={<PeopleRowFallback />}>
+              <PeopleRow />
+            </Suspense>
+            <h2 className="mt-10 font-display text-3xl">שנים</h2>
+          </>
+        )}
+        <ul className={`${withPeople ? "mt-4" : "mt-8"} grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 sm:gap-x-5 lg:grid-cols-4`}>
           {years.map((y) => (
             <li key={y.libraryId}>
               <Link href={`/photos/${y.year}`} className="group block rounded-2xl">
