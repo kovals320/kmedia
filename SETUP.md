@@ -178,7 +178,7 @@ The admin signs in with an existing Supabase user (email + password). There is n
 To switch the admin's email, edit the existing user's email (don't create a new user and delete the old one).
 
 **API key for the app** (Account Settings → API Keys): read-only permissions only:
-`asset.read`, `asset.view`, `library.read`, `timeline.read` (plus `library.statistics` optional). Nothing with update/delete/upload.
+`asset.read`, `asset.view`, `library.read`, `timeline.read`, `person.read` (plus `library.statistics` optional). Nothing with update/delete/upload.
 
 **Cloudflare Tunnel** (Cloudflare dashboard → Networking → Tunnels → Create tunnel, type Cloudflared):
 ```bash
@@ -188,6 +188,14 @@ sudo docker run -d --name cloudflared --restart unless-stopped cloudflare/cloudf
 Then Configure → Routes → Add published application: subdomain `photos`, domain `kneapps.fyi`, service `http://192.168.1.144:2283`.
 (Use the server's LAN address, not `localhost`: cloudflared runs in its own container.) Tunnel name `kne-immich`, container name `cloudflared`.
 (Free plan limits each upload through the tunnel to 100 MB; upload large files from inside the home network.)
+
+**People (faces)** (`getPeople` / `getPersonPhotos` in `src/lib/immich.ts`): needs `person.read` on the app's API key.
+- Only people who were given a **name** in Immich (Explore → People) and are not hidden appear; unnamed faces are never shown,
+  and `/api/person/[id]` refuses their face pictures. Only photos from the year folders are counted and shown.
+- Photos page: an "אנשים" row (most photos first) above the years; `/photos/people`: everyone A–Z with a search box (13+ people);
+  `/photos/people/<id>`: that person's photos, newest first, same viewer and share links as a year.
+- The face picture is the one chosen in Immich; it updates (new address `?v=`) when changed there. Cached 1 hour like the rest.
+- Public, like the rest of the site (owner's decision, 2026-10-24).
 
 **How the app dates photos** (`src/lib/immich.ts`)
 1. A camera wrote real capture info (EXIF make/model present): Immich's date.

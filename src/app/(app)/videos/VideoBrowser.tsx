@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { yearInTitle } from "@/lib/sort";
 import type { Video } from "@/lib/youtube";
 import { useOverlay } from "@/lib/useOverlay";
+import { matches, queryWords } from "@/lib/search";
 
 type Group = { label: string; items: { video: Video; index: number }[] };
 
@@ -20,31 +21,12 @@ function groupByYear(videos: Video[]): Group[] {
   return groups;
 }
 
-// Search text, normalised so Hebrew matches loosely: no niqqud, final letters = regular
-// letters (סרטון finds סרטונים), no quotes/punctuation, lower-case English.
-const FINAL_LETTERS: Record<string, string> = { "ך": "כ", "ם": "מ", "ן": "נ", "ף": "פ", "ץ": "צ" };
-function normalize(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[\u0591-\u05BD\u05BF-\u05C7]/g, "") // niqqud and cantillation (keeps the maqaf ־ as a separator)
-    .replace(/["'`\u05F3\u05F4]/g, "") // quotes, geresh, gershayim: ט"ו = טו
-    .replace(/[ךםןףץ]/g, (c) => FINAL_LETTERS[c])
-    .replace(/[^\p{L}\p{N}]+/gu, " ")
-    .trim();
-}
-
-/** Every word of the query must appear somewhere in the title. */
-function matches(title: string, words: string[]): boolean {
-  const t = normalize(title);
-  return words.every((w) => t.includes(w));
-}
-
 export function VideoBrowser({ videos, initialIndex }: { videos: Video[]; initialIndex: number | null }) {
   const [current, setCurrent] = useState<number | null>(null);
   const [query, setQuery] = useState("");
   const { markOpened, close } = useOverlay(current !== null, () => setCurrent(null));
 
-  const words = useMemo(() => normalize(query).split(" ").filter(Boolean), [query]);
+  const words = useMemo(() => queryWords(query), [query]);
   // The player's next/previous move through the search results, not the whole list.
   const shown = useMemo(
     () => (words.length === 0 ? videos : videos.filter((v) => matches(v.title, words))),

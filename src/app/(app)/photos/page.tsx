@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { BackLink } from "@/components/BackLink";
 import { getYears, type YearSummary } from "@/lib/immich";
+import { PeopleRow, PeopleRowFallback } from "./PeopleRow";
 
 export const metadata = { title: "תמונות – קיבוץ ניר אליהו - מדיה" };
 
@@ -33,7 +35,12 @@ export default async function PhotosPage() {
           עוד אין כאן תמונות.
         </p>
       ) : (
-        <ul className="mt-8 grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 sm:gap-x-5 lg:grid-cols-4">
+        <>
+        <Suspense fallback={<PeopleRowFallback />}>
+          <PeopleRow />
+        </Suspense>
+        <h2 className="mt-10 font-display text-3xl">שנים</h2>
+        <ul className="mt-4 grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 sm:gap-x-5 lg:grid-cols-4">
           {years.map((y) => (
             <li key={y.libraryId}>
               <Link href={`/photos/${y.year}`} className="group block rounded-2xl">
@@ -55,6 +62,7 @@ export default async function PhotosPage() {
             </li>
           ))}
         </ul>
+        </>
       )}
     </main>
   );

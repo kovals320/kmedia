@@ -251,3 +251,115 @@ export async function fetchPhotoImage(id: string, size: "thumbnail" | "preview")
   if (!res.ok || !res.body) return null;
   return { body: res.body, type: res.headers.get("content-type") ?? "image/jpeg" };
 }
+
+// ---------------------------------------------------------------------------
+// People (faces recognised by Immich). Only people who were given a NAME in Immich
+// and are not hidden are shown, and only with photos from the year folders.
+// Needs the `person.read` permission on the Immich API key.
+
+export type PersonSummary = {
+  id: string;
+  name: string;
+  count: number;
+  /** Changes when the face picture changes in Immich, so the browser fetches the new one. */
+  version: string;
+};
+
+type PersonDto = { id: string; name: string; isHidden?: boolean; updatedAt?: string | null };
+type PeopleResponse = { people: PersonDto[]; hasNextPage?: boolean };
+
+const namedPeople = unstable_cache(
+  async (): Promise<{ id: string; name: string; version: string }[]> => {
+    const people: { id: string; name: string; version: string }[] = [];
+    for (let page = 1; page <= 50; page++) {
+      const res = await immich<PeopleResponse>(`/api/people?withHidden=false&page=${page}&size=500`);
+      for (const p of res.people) {
+        const name = p.name?.trim();
+        if (!name || p.isHidden) continue;
+        people.push({ id: p.id, name, version: (p.updatedAt ?? "").replace(/\D/g, "").slice(0, 14) });
+      }
+      if (!res.hasNextPage || res.people.length === 0) break;
+    }
+    return people;
+  },
+  ["immich-named-people-v1"],
+  { revalidate: HOUR, tags: [IMMICH_CACHE_TAG] },
+);
+
+// The photos a person appears in (any library; filtered to the year folders later).
+const personAssetIds = unstable_cache(
+  async (personId: string): Promise<string[]> => {
+    const ids: string[] = [];
+    let page: number | null = 1;
+    while (page) {
+      const res: SearchResponse = await immich<SearchResponse>("/api/search/metadata", {
+        method: "POST",
+        body: { personIds: [personId], type: "IMAGE", size: 1000, page },
+      });
+      for (const item of res.assets.items) if (visible(item)) ids.push(item.id);
+      const next: number = res.assets.nextPage ? Number(res.assets.nextPage) : NaN;
+      page = Number.isFinite(next) ? next : null;
+    }
+    return ids;
+  },
+  ["immich-person-assets-v1"],
+  { revalidate: HOUR, tags: [IMMICH_CACHE_TAG] },
+);
+
+/** Runs `fn` over `items`, at most `limit` at a time (so Immich isn't flooded). */
+async function mapLimited<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const out: R[] = new Array(items.length);
+  let next = 0;
+  async function worker() {
+    while (next < items.length) {
+      const i = next++;
+      out[i] = await fn(items[i]);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return out;
+}
+
+const heCollator = new Intl.Collator(["he", "en"], { numeric: true, sensitivity: "base" });
+
+/** Named people with at least one photo on the site, in alphabetical order. */
+export async function getPeople(): Promise<PersonSummary[]> {
+  const [people, catalog] = await Promise.all([namedPeople(), getCatalog()]);
+  if (people.length === 0) return [];
+  const onSite = new Set(catalog.map((p) => p.id));
+  const counts = await mapLimited(people, 6, async (p) => {
+    const ids = await personAssetIds(p.id);
+    return ids.reduce((n, id) => n + (onSite.has(id) ? 1 : 0), 0);
+  });
+  return people
+    .map((p, i) => ({ ...p, count: counts[i] }))
+    .filter((p) => p.count > 0)
+    .sort((a, b) => heCollator.compare(a.name, b.name));
+}
+
+/** One named person and their photos on the site, newest first. Null if not a named, visible person. */
+export async function getPersonPhotos(
+  personId: string,
+): Promise<{ id: string; name: string; version: string; photos: Photo[] } | null> {
+  if (!UUID.test(personId)) return null;
+  const person = (await namedPeople()).find((p) => p.id === personId);
+  if (!person) return null;
+  const [ids, catalog] = await Promise.all([personAssetIds(personId), getCatalog()]);
+  const wanted = new Set(ids);
+  const photos = catalog.filter((p) => wanted.has(p.id));
+  photos.sort((a, b) => (b.t ?? "").localeCompare(a.t ?? ""));
+  return { ...person, photos: photos.map(strip) };
+}
+
+/** The face picture Immich chose for a named person. */
+export async function fetchPersonImage(personId: string) {
+  if (!UUID.test(personId)) return null;
+  if (!(await namedPeople()).some((p) => p.id === personId)) return null; // never serve unnamed faces
+  const { base, key } = config();
+  const res = await fetch(`${base}/api/people/${personId}/thumbnail`, {
+    headers: { "x-api-key": key },
+    cache: "no-store",
+  });
+  if (!res.ok || !res.body) return null;
+  return { body: res.body, type: res.headers.get("content-type") ?? "image/jpeg" };
+}

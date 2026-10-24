@@ -5,14 +5,22 @@ import type { Photo } from "@/lib/immich";
 import { useOverlay } from "@/lib/useOverlay";
 
 const STEP = 240; // photos rendered per scroll step
+/**
+ * A grid of photos with a full-screen viewer. Used for a year (/photos/2011) and for a
+ * person (/photos/people/ID): `path` is the page's address, used for share links.
+ */
 export function YearView({
   year,
   photos,
   initialIndex,
+  path = `/photos/${year}`,
+  shareTitle = `תמונה מ-${year}`,
 }: {
   year: string;
   photos: Photo[];
   initialIndex: number | null;
+  path?: string;
+  shareTitle?: string;
 }) {
   const [shown, setShown] = useState(STEP);
   const [viewing, setViewing] = useState<number | null>(null);
@@ -36,11 +44,11 @@ export function YearView({
   // Opened from a shared link (/photos/2011?p=ID).
   useEffect(() => {
     if (initialIndex === null) return;
-    window.history.replaceState(null, "", `/photos/${year}`);
+    window.history.replaceState(null, "", path);
     setShown((n) => Math.max(n, initialIndex + 1));
     markOpened();
     setViewing(initialIndex);
-  }, [initialIndex, markOpened, year]);
+  }, [initialIndex, markOpened, path]);
 
   function open(i: number) {
     markOpened();
@@ -74,7 +82,7 @@ export function YearView({
       {shown < photos.length && <div ref={sentinel} className="h-24" aria-hidden />}
 
       {viewing !== null && photos[viewing] && (
-        <Viewer year={year} photos={photos} index={viewing} onIndex={setViewing} onClose={close} />
+        <Viewer year={year} path={path} shareTitle={shareTitle} photos={photos} index={viewing} onIndex={setViewing} onClose={close} />
       )}
     </>
   );
@@ -82,12 +90,16 @@ export function YearView({
 
 function Viewer({
   year,
+  path,
+  shareTitle,
   photos,
   index,
   onIndex,
   onClose,
 }: {
   year: string;
+  path: string;
+  shareTitle: string;
   photos: Photo[];
   index: number;
   onIndex: (i: number) => void;
@@ -114,10 +126,10 @@ function Viewer({
     : year;
 
   async function share() {
-    const url = `${window.location.origin}/photos/${year}?p=${photo.id}`;
+    const url = `${window.location.origin}${path}?p=${photo.id}`;
     if (navigator.share) {
       try {
-        await navigator.share({ title: `תמונה מ-${year}`, url });
+        await navigator.share({ title: shareTitle, url });
       } catch {}
       return;
     }
