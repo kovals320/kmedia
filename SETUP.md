@@ -309,6 +309,8 @@ sudo cp ~/hide-deleted.sh /mnt/backup/family-media-backup/
 ## 10. Working preferences of the owner (Dor)
 
 - Writes in Hebrew; **replies in English**.
+- **One conversation per project.** The kmedia conversation covers only the kibbutz server (`kne@192.168.1.144`);
+  the family media site and its server (192.168.1.253) are handled in a separate conversation. Don't mix them.
 - Setup work in general: one step at a time, explained, wait for confirmation.
 - For server / SSH work: **one step at a time**, wait for the output before the next step.
 - For app features: build the whole thing and report when done (don't ask at every step).
