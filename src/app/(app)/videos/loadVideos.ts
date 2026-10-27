@@ -1,18 +1,35 @@
 import "server-only";
 import { cache } from "react";
-import { getViewer } from "@/lib/auth";
+import { createClient } from "@supabase/supabase-js";
+import { unstable_cache } from "next/cache";
 import { sortByTitleYear } from "@/lib/sort";
 import { getPlaylistVideos, type Video } from "@/lib/youtube";
 
 // All videos from every playlist as one list (duplicates removed),
 // sorted by the year in the title. Shared by the page and its link preview.
+// Playlists and display titles change only on the admin page, which clears this cache (tag below).
+export const VIDEOS_DB_CACHE_TAG = "kmedia-videos-db";
+
+const readVideoSettings = unstable_cache(
+  async () => {
+    // Public data: read without the visitor's cookies, so pages can be cached.
+    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!, {
+      auth: { persistSession: false },
+    });
+    const [{ data, error }, { data: titleRows, error: titlesError }] = await Promise.all([
+      supabase.from("kmedia_playlists").select("youtube_playlist_id").order("sort_order"),
+      supabase.from("kmedia_video_titles").select("video_id, title"),
+    ]);
+    if (error) throw new Error(error.message);
+    if (titlesError) throw new Error(titlesError.message);
+    return { data, titleRows };
+  },
+  ["kmedia-videos-db-v1"],
+  { revalidate: 1800, tags: [VIDEOS_DB_CACHE_TAG] },
+);
+
 export const loadVideos = cache(async () => {
-  const { supabase } = await getViewer();
-  const [{ data, error }, { data: titleRows }] = await Promise.all([
-    supabase.from("kmedia_playlists").select("youtube_playlist_id").order("sort_order"),
-    supabase.from("kmedia_video_titles").select("video_id, title"),
-  ]);
-  if (error) throw new Error(error.message);
+  const { data, titleRows } = await readVideoSettings();
   // Display titles set on the admin page (e.g. to add a year), YouTube unchanged.
   const displayTitles = new Map(
     ((titleRows ?? []) as { video_id: string; title: string }[]).map((r) => [r.video_id, r.title]),

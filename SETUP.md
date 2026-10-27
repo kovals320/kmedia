@@ -63,6 +63,12 @@ never shown inside the installed app. A copy for another site must redraw the ic
 
 Keep text contrast at least 4.5:1 (checked for kmedia: ink/paper 12.1, white/lake 6.2, ink/sun 5.2).
 
+**Speed (2026-10-27):** functions run in Frankfurt (`vercel.json` → `"regions": ["fra1"]`, next to Supabase eu-central-1;
+the Vercel default was Washington, which made every request cross the Atlantic). The home page is cached (ISR, 30 min,
+refreshed right away by admin changes); the "ניהול / יציאה" links are checked in the browser (`AdminLinks.tsx`) so no
+cookie makes it dynamic. Playlists and display titles are read without cookies and cached (tag `kmedia-videos-db`,
+cleared by every admin change). Don't add `cookies()` / `getViewer()` to the home page or it becomes slow again.
+
 ## 3. Accounts and where things live
 
 | Service | What | Notes |

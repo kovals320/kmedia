@@ -5,6 +5,7 @@ import { requireAdmin } from "@/lib/auth";
 import { IMMICH_CACHE_TAG } from "@/lib/immich";
 import { getPlaylistInfo, YOUTUBE_CACHE_TAG } from "@/lib/youtube";
 import { SETTINGS_CACHE_TAG } from "@/lib/settings";
+import { VIDEOS_DB_CACHE_TAG } from "../videos/loadVideos";
 
 export type FormState = { error: string | null; ok: string | null };
 
@@ -46,16 +47,20 @@ export async function addPlaylist(_: FormState, formData: FormData): Promise<For
       ok: null,
     };
   }
+  updateTag(VIDEOS_DB_CACHE_TAG);
   revalidatePath("/admin");
   revalidatePath("/videos");
+  revalidatePath("/");
   return { error: null, ok: `"${info.title}" נוסף (${info.count} סרטים).` };
 }
 
 export async function removePlaylist(id: string) {
   const { supabase } = await requireAdmin();
   await supabase.from("kmedia_playlists").delete().eq("id", id);
+  updateTag(VIDEOS_DB_CACHE_TAG);
   revalidatePath("/admin");
   revalidatePath("/videos");
+  revalidatePath("/");
 }
 
 // Drop the saved YouTube and Immich data so the next visit reads fresh content.
@@ -63,6 +68,8 @@ export async function refreshFromYouTube(_: FormState): Promise<FormState> {
   await requireAdmin();
   updateTag(YOUTUBE_CACHE_TAG);
   updateTag(IMMICH_CACHE_TAG);
+  updateTag(VIDEOS_DB_CACHE_TAG);
+  revalidatePath("/");
   revalidatePath("/videos");
   revalidatePath("/photos", "layout");
   const time = new Intl.DateTimeFormat("he-IL", {
@@ -76,6 +83,7 @@ export async function refreshFromYouTube(_: FormState): Promise<FormState> {
 const VIDEO_ID = /^[A-Za-z0-9_-]{6,20}$/;
 
 function refreshVideoPages() {
+  updateTag(VIDEOS_DB_CACHE_TAG);
   revalidatePath("/videos");
   revalidatePath("/");
 }
