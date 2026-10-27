@@ -200,6 +200,23 @@ sudo docker run -d --name cloudflared --restart unless-stopped cloudflare/cloudf
 ```
 Then Configure → Routes → Add published application: subdomain `photos`, domain `kneapps.fyi`, service `http://192.168.1.144:2283`.
 (Use the server's LAN address, not `localhost`: cloudflared runs in its own container.) Tunnel name `kne-immich`, container name `cloudflared`.
+
+**Updating cloudflared** (done 2026-10-27 to 2026.10.3 after Cloudflare's eMudhra certificate notice; the container now uses a
+pinned version tag, not `latest`). Restarting the old container is NOT enough: pull the new image and recreate the container.
+The token is taken from the running container (it is argument 5), never typed or shown. About 5–10 s of downtime.
+```bash
+V=2026.10.3   # the version Cloudflare asks for
+sudo docker pull cloudflare/cloudflared:$V
+TOKEN=$(sudo docker inspect cloudflared --format '{{index .Args 5}}')
+if [ ${#TOKEN} -gt 100 ] && [ "${TOKEN:0:3}" = "eyJ" ]; then
+  sudo docker stop cloudflared && sudo docker rename cloudflared cloudflared-old && \
+  sudo docker run -d --name cloudflared --restart unless-stopped cloudflare/cloudflared:$V tunnel --no-autoupdate run --token "$TOKEN"
+else echo "token not found, nothing changed"; fi; unset TOKEN
+sudo docker logs cloudflared 2>&1 | grep -c "Registered tunnel connection"   # expect 4
+sudo docker rm cloudflared-old && sudo docker rmi cloudflare/cloudflared:<old tag>
+```
+(If `index .Args 5` is not the token, list positions and lengths with
+`sudo docker inspect cloudflared --format '{{range $i,$a := .Args}}{{$i}}: {{len $a}}{{"\n"}}{{end}}'`.)
 (Free plan limits each upload through the tunnel to 100 MB; upload large files from inside the home network.)
 
 **People (faces)** (`getPeople` / `getPersonPhotos` in `src/lib/immich.ts`): needs `person.read` on the app's API key.
