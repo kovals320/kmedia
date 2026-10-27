@@ -201,6 +201,17 @@ sudo docker run -d --name cloudflared --restart unless-stopped cloudflare/cloudf
 Then Configure → Routes → Add published application: subdomain `photos`, domain `kneapps.fyi`, service `http://192.168.1.144:2283`.
 (Use the server's LAN address, not `localhost`: cloudflared runs in its own container.) Tunnel name `kne-immich`, container name `cloudflared`.
 
+**Second cloudflared on this server (found 2026-10-27):** besides the Docker container, a systemd service `cloudflared`
+(apt package from Cloudflare's repo, token in `/etc/cloudflared/token`) runs a DIFFERENT tunnel, ID `6ca1f407-...`.
+Its purpose is not yet known (check its routes in the dashboard); don't remove it until it is. It is updated by
+`apt upgrade` (2026.10.4 on 2026-10-27) and restarted automatically by needrestart.
+
+**Server maintenance** (Ubuntu 26.04 LTS): security updates install automatically (unattended-upgrades is on).
+About once a month: `sudo apt update && sudo apt upgrade -y` (keep existing config files if asked). Docker updates restart
+the containers (about a minute of downtime; they come back by themselves). Check afterwards with
+`sudo docker ps` (all healthy) and `[ -f /var/run/reboot-required ] && echo reboot`. "Deferred due to phasing" = wait, nothing to do.
+Immich is NOT updated by apt: update its Docker images separately, only after reading its release notes.
+
 **Updating cloudflared** (done 2026-10-27 to 2026.10.3 after Cloudflare's eMudhra certificate notice; the container now uses a
 pinned version tag, not `latest`). Restarting the old container is NOT enough: pull the new image and recreate the container.
 The token is taken from the running container (it is argument 5), never typed or shown. About 5–10 s of downtime.
