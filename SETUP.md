@@ -1,5 +1,8 @@
 # How this app was built (and how to build another one like it)
 
+> **2026-10-31: moved.** Media now lives in the kibbutz app at `app.kneapps.fyi/media` (repo `kovals320/kne`, see its SETUP.md).
+> This site only forwards there (`next.config.ts` redirects; shared `?p=` / `?v=` links keep working).
+
 A full record of the `media.kneapps.fyi` project, written so a new conversation (or a new person)
 can rebuild it, or clone it for another family/domain, without the original chat.
 
