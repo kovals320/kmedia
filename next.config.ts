@@ -12,6 +12,7 @@ const nextConfig: NextConfig = {
       { source: "/photos/:path*", destination: `${NEW}/photos/:path*`, permanent: true },
       { source: "/videos", destination: `${NEW}/videos`, permanent: true },
       { source: "/admin", destination: `${NEW}/admin`, permanent: true },
+      { source: "/login", destination: `${NEW}/admin`, permanent: true },
       { source: "/api/photo/:id/:size", destination: "https://app.kneapps.fyi/api/media/photo/:id/:size", permanent: true },
       { source: "/api/person/:id", destination: "https://app.kneapps.fyi/api/media/person/:id", permanent: true },
       { source: "/:path*", destination: NEW, permanent: true },
