@@ -1,7 +1,9 @@
 # How this app was built (and how to build another one like it)
 
-> **2026-10-31: moved.** Media now lives in the kibbutz app at `app.kneapps.fyi/media` (repo `kovals320/kne`, see its SETUP.md).
-> This site only forwards there (`next.config.ts` redirects; shared `?p=` / `?v=` links keep working).
+> **2026-11-18: running again on its own.** From 2026-10-31 to 2026-11-18 this site forwarded to `app.kneapps.fyi/media`.
+> Dor switched media off in the kibbutz app (only rain is open there) and wants this site reachable directly, so the
+> forwarding was undone: this site runs as before, with its own login (`kmedia_members`) and its own keys in the Vercel
+> project `kmedia`. The media section in the kne repo still exists (switched off) and uses the same tables.
 
 A full record of the `media.kneapps.fyi` project, written so a new conversation (or a new person)
 can rebuild it, or clone it for another family/domain, without the original chat.
