@@ -9,7 +9,7 @@ A full record of the `media.kneapps.fyi` project, written so a new conversation 
 can rebuild it, or clone it for another family/domain, without the original chat.
 
 > **kmedia (Kibbutz Nir Eliyahu) copy:** cloned from `kovals320/media` on 2026-10-17. Domain `media.kneapps.fyi`,
-> Supabase shared project `home` with prefix `kmedia_`, its own Immich server (`kne-media`, 192.168.1.144).
+> Supabase shared project `home` with prefix `kmedia_`, its own Immich server (`kne-media`, 192.168.1.3).
 > Sections 3, 4 and 7 describe THIS deployment. Section 11 records how it was set up.
 
 > **Starting a new conversation with this file:** read sections 10 (how Dor likes to work), 9 and 12 (gotchas),
@@ -82,7 +82,7 @@ cleared by every admin change). Don't add `cookies()` / `getViewer()` to the hom
 | Vercel | team "Apps" (`apps-2265`), project `kmedia` | The Vercel connector in Claude gets 403 on this team, so import, env vars and domain are done in the browser. Do NOT add the Supabase integration offered on import |
 | Cloudflare | zone `kneapps.fyi` | `media` CNAME to Vercel (DNS only). `photos` = Cloudflare Tunnel `kne-immich` to Immich |
 | Supabase | shared project `home` (`pjujibzoscawmstarerz`) | Shared with other apps, so **every table/function/bucket uses the `kmedia_` prefix** |
-| Immich | home server `kne-media`, `192.168.1.144`, user `kne`, Ubuntu + Docker | Immich v3, port 2283. SSH: `ssh kne@192.168.1.144` |
+| Immich | home server `kne-media`, `192.168.1.3`, user `kne`, Ubuntu + Docker | Immich v3, port 2283. SSH: `ssh kne@192.168.1.3` |
 | YouTube | kibbutz playlist(s) | Videos and playlists must be **Unlisted** (not Private). API key from Google Cloud project `media-dorh` (shared with the media site) |
 
 ## 4. Environment variables (Vercel, all environments)
@@ -209,13 +209,21 @@ To switch the admin's email, edit the existing user's email (don't create a new 
 sudo docker run -d --name cloudflared --restart unless-stopped cloudflare/cloudflared:latest \
   tunnel --no-autoupdate run --token <token from the Cloudflare page>
 ```
-Then Configure → Routes → Add published application: subdomain `photos`, domain `kneapps.fyi`, service `http://192.168.1.144:2283`.
+Then Configure → Routes → Add published application: subdomain `photos`, domain `kneapps.fyi`, service `http://192.168.1.3:2283`.
 (Use the server's LAN address, not `localhost`: cloudflared runs in its own container.) Tunnel name `kne-immich`, container name `cloudflared`.
 
 **Second cloudflared on this server (found 2026-10-27):** besides the Docker container, a systemd service `cloudflared`
 (apt package from Cloudflare's repo, token in `/etc/cloudflared/token`) runs a DIFFERENT tunnel, ID `6ca1f407-...`.
 Its purpose is not yet known (check its routes in the dashboard); don't remove it until it is. It is updated by
 `apt upgrade` (2026.10.4 on 2026-10-27) and restarted automatically by needrestart.
+
+**Server address changed (2026-11-18):** the server moved from 192.168.1.144 to **192.168.1.3** (new DHCP lease), so the
+tunnel route pointed at a dead address and the site showed "שרת התמונות לא זמין" (health: `immich: status 502`, while the
+tunnel itself was connected). Fixed by changing the `photos.kneapps.fyi` route to `http://192.168.1.3:2283`.
+To stop it happening again, reserve the address in the router (DHCP reservation for `kne-media`).
+If it happens again: `ping kne-media`, or the router's device list, or a ping sweep; then update the tunnel route.
+Error pages are never cached any more (`connection()` in the photo pages' error branch), so once the server is back the
+site recovers by itself; "רענון תוכן" makes it immediate.
 
 **Server maintenance** (Ubuntu 26.04 LTS): security updates install automatically (unattended-upgrades is on).
 About once a month: `sudo apt update && sudo apt upgrade -y` (keep existing config files if asked). Docker updates restart
@@ -261,7 +269,7 @@ sudo docker rm cloudflared-old && sudo docker rmi cloudflare/cloudflared:<old ta
 - Lists cached 1 hour (tag `immich`); the admin "refresh content" button clears it.
 
 **Day-to-day routine**
-- Add photos: copy into the year folder (`scp "C:\path\*" kne@192.168.1.144:/home/kne/Pictures/2022/`), Immich → Administration →
+- Add photos: copy into the year folder (`scp "C:\path\*" kne@192.168.1.3:/home/kne/Pictures/2022/`), Immich → Administration →
   External Libraries → **Scan All Libraries**, then "refresh content" in the app.
 - Remove photos from the site permanently: delete in Immich, run `~/hide-deleted.sh` (answer lowercase `y`), then scan.
 - Bring back a photo deleted in the past: empty Immich's trash first (or restore it), then copy the file back and scan.
@@ -331,7 +339,7 @@ sudo cp ~/hide-deleted.sh /mnt/backup/family-media-backup/
 ## 10. Working preferences of the owner (Dor)
 
 - Writes in Hebrew; **replies in English**.
-- **One conversation per project.** The kmedia conversation covers only the kibbutz server (`kne@192.168.1.144`);
+- **One conversation per project.** The kmedia conversation covers only the kibbutz server (`kne@192.168.1.3`);
   the family media site and its server (192.168.1.253) are handled in a separate conversation. Don't mix them.
 - Setup work in general: one step at a time, explained, wait for confirmation.
 - For server / SSH work: **one step at a time**, wait for the output before the next step.
@@ -358,7 +366,7 @@ sudo cp ~/hide-deleted.sh /mnt/backup/family-media-backup/
    unset KEY
    ```
    App key `kmedia-app`: read-only permissions (section 7).
-4. Cloudflare Tunnel `kne-immich` → `photos.kneapps.fyi` → `http://192.168.1.144:2283`.
+4. Cloudflare Tunnel `kne-immich` → `photos.kneapps.fyi` → `http://192.168.1.3:2283`.
 5. Vercel project `kmedia` (team Apps), 5 env vars, domain `media.kneapps.fyi` (CNAME, DNS only).
 6. Playlist added on the admin page. `/api/health` all connected.
 

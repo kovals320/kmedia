@@ -4,6 +4,7 @@ import { BackLink } from "@/components/BackLink";
 import { getYears, type YearSummary } from "@/lib/immich";
 import { PeopleRow, PeopleRowFallback } from "./PeopleRow";
 import { showPeople } from "@/lib/settings";
+import { connection } from "next/server";
 
 export const metadata = { title: "תמונות – קיבוץ ניר אליהו - מדיה" };
 
@@ -14,6 +15,12 @@ export default async function PhotosPage() {
     years = await getYears();
   } catch {
     years = null;
+  }
+  if (years === null) {
+    // Immich didn't answer: never cache this error page. During a background refresh this makes the
+    // refresh fail, so visitors keep getting the last good page; during a deploy the page is built
+    // fresh on each visit instead, and recovers by itself when the server is back.
+    await connection();
   }
   const withPeople = await peopleOn;
 

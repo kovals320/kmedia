@@ -3,6 +3,7 @@ import { getPeople, type PersonSummary } from "@/lib/immich";
 import { PeopleGrid } from "./PeopleGrid";
 import { notFound } from "next/navigation";
 import { showPeople } from "@/lib/settings";
+import { connection } from "next/server";
 
 export const metadata = { title: "אנשים – קיבוץ ניר אליהו - מדיה" };
 
@@ -13,6 +14,12 @@ export default async function PeoplePage() {
     people = await getPeople();
   } catch {
     people = null;
+  }
+  if (people === null) {
+    // Immich didn't answer: never cache this error page. During a background refresh this makes the
+    // refresh fail, so visitors keep getting the last good page; during a deploy the page is built
+    // fresh on each visit instead, and recovers by itself when the server is back.
+    await connection();
   }
 
   return (
