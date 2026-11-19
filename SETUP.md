@@ -448,3 +448,22 @@ Then Vercel → kmedia → Settings → Environment Variables → `IMMICH_TAG_AP
 Also: Next.js updated 16.4.2 → 16.4.6 (npm audit: moderate advisories GHSA-mfr8-8qww-v76h / GHSA-vc7v-qv4w-wrv8, fixed in 16.4.5).
 Fixed while porting: the tagging layer and the photo shared a React key (also present in the family app).
 
+## 14. Backup to the external disk (2026-11-19)
+
+External USB disk (931 GB, a **Ventoy** disk: never format it or touch the small `VTOYEFI` partition). Data partition
+`/dev/sda1` (NTFS, "New Volume"), mounted at `/mnt/backup`. It also holds other things (DOR, Documents, Video,
+`family-media-backup` = the family server's backup, other project) - leave them alone.
+
+- **Photos:** the disk's `KNE` folder is the original source of `~/Pictures` (same year folders). On 2026-11-19 every
+  server photo was already there (0 new, 0 different). The backup only adds NEW files to KNE (`rsync --ignore-existing`),
+  never deletes or overwrites, so photos removed from the site stay on the disk.
+- **Everything else** goes to `kmedia-backup/` on the disk (about 6 GB): `immich/` (docker-compose.yml, .env with the DB
+  password, `db-backups/` = Immich's daily dumps mirrored, `upload/`), `server/` (hide-deleted.sh, kmedia-backup.sh,
+  Pictures-hidden, crontab.txt), `app/` (code zip from GitHub, public Supabase tables as JSON), README.txt, last-backup.txt.
+  Not included: Immich thumbnails (regenerated), tunnel tokens (re-issued in Cloudflare), admin-only Supabase tables.
+- Script on the server: `~/kmedia-backup.sh` (stops if the disk isn't mounted). Routine:
+```bash
+sudo mount -t ntfs3 -o uid=$(id -u),gid=$(id -g) /dev/sda1 /mnt/backup && ~/kmedia-backup.sh && sudo umount /mnt/backup
+```
+Note: the server clock runs in UTC (times in last-backup.txt are 2 hours behind Israel time).
+
