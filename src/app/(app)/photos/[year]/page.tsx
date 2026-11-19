@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { BackLink } from "@/components/BackLink";
 import { getYearPhotos, type Photo } from "@/lib/immich";
 import { YearView } from "./YearView";
+import { showPeople } from "@/lib/settings";
 
 type Props = { params: Promise<{ year: string }>; searchParams: Promise<{ p?: string }> };
 
@@ -53,7 +54,7 @@ export default async function YearPage({ params, searchParams }: Props) {
           אין תמונות בשנה הזו.
         </p>
       ) : (
-        <YearView year={year} photos={photos} initialIndex={initialIndex >= 0 ? initialIndex : null} />
+        <YearView year={year} photos={photos} initialIndex={initialIndex >= 0 ? initialIndex : null} canTag={await showPeople()} />
       )}
     </main>
   );

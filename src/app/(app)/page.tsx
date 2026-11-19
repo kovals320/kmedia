@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { getYears } from "@/lib/immich";
 import { AdminLinks } from "@/components/AdminLinks";
+import { WhatsNewStrip } from "@/components/WhatsNew";
 import { loadVideos } from "./videos/loadVideos";
 
 // Totals next to each tile; they follow the same caches as the pages
@@ -42,7 +43,7 @@ export default function Home() {
         <h1 className="text-center font-display text-2xl text-ink sm:text-3xl">קיבוץ ניר אליהו - מדיה</h1>
         <AdminLinks />
       </div>
-
+      <WhatsNewStrip />
 
       <nav
         aria-label="בחירת סוג מדיה"

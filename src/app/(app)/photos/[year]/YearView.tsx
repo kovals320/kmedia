@@ -1,7 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Photo } from "@/lib/immich";
+import { FaceTagger } from "./FaceTagger";
+import { NewLabel } from "@/components/WhatsNew";
+import { useSince } from "@/lib/whatsNew";
 import { useOverlay } from "@/lib/useOverlay";
 
 const STEP = 240; // photos rendered per scroll step
@@ -15,15 +18,18 @@ export function YearView({
   initialIndex,
   path = `/photos/${year}`,
   shareTitle = `תמונה מ-${year}`,
+  canTag = false,
 }: {
   year: string;
   photos: Photo[];
   initialIndex: number | null;
   path?: string;
   shareTitle?: string;
+  canTag?: boolean; // show the face tagging button (People switch is on)
 }) {
   const [shown, setShown] = useState(STEP);
   const [viewing, setViewing] = useState<number | null>(null);
+  const since = useSince(); // previous visit: photos added after it get a "new" label
   const { markOpened, close } = useOverlay(viewing !== null, () => setViewing(null));
   const sentinel = useRef<HTMLDivElement>(null);
 
@@ -65,8 +71,9 @@ export function YearView({
               type="button"
               onClick={() => open(index)}
               aria-label={`תמונה ${index + 1}`}
-              className="block aspect-square w-full overflow-hidden rounded-md bg-sun/20 sm:rounded-lg"
+              className="relative block aspect-square w-full overflow-hidden rounded-md bg-sun/20 sm:rounded-lg"
             >
+              {since !== null && photo.a && photo.a > since && <NewLabel className="right-1 top-1 z-[1]" />}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={`/api/photo/${photo.id}/thumb`}
@@ -82,7 +89,16 @@ export function YearView({
       {shown < photos.length && <div ref={sentinel} className="h-24" aria-hidden />}
 
       {viewing !== null && photos[viewing] && (
-        <Viewer year={year} path={path} shareTitle={shareTitle} photos={photos} index={viewing} onIndex={setViewing} onClose={close} />
+        <Viewer
+          year={year}
+          path={path}
+          shareTitle={shareTitle}
+          canTag={canTag}
+          photos={photos}
+          index={viewing}
+          onIndex={setViewing}
+          onClose={close}
+        />
       )}
     </>
   );
@@ -92,6 +108,7 @@ function Viewer({
   year,
   path,
   shareTitle,
+  canTag,
   photos,
   index,
   onIndex,
@@ -100,6 +117,7 @@ function Viewer({
   year: string;
   path: string;
   shareTitle: string;
+  canTag: boolean;
   photos: Photo[];
   index: number;
   onIndex: (i: number) => void;
@@ -110,6 +128,10 @@ function Viewer({
   const hasNext = index < photos.length - 1;
   const touchX = useRef<number | null>(null);
   const [copied, setCopied] = useState(false);
+  const [tagging, setTagging] = useState(false);
+  const [editing, setEditing] = useState(false); // the name form is open
+  const img = useRef<HTMLImageElement>(null);
+  const onEditing = useCallback((v: boolean) => setEditing(v), []);
 
   const prev = () => hasPrev && onIndex(index - 1);
   const next = () => hasNext && onIndex(index + 1);
@@ -149,13 +171,14 @@ function Viewer({
       aria-label={`תמונה ${index + 1} מתוך ${photos.length}`}
       className="fixed inset-0 z-50 flex select-none flex-col bg-[#111a12] text-white"
       onKeyDown={(e) => {
+        if (editing || (e.target as HTMLElement).tagName === "INPUT") return;
         // RTL: left arrow moves forward, right arrow goes back.
         if (e.key === "ArrowLeft") next();
         if (e.key === "ArrowRight") prev();
       }}
-      onTouchStart={(e) => (touchX.current = e.touches[0].clientX)}
+      onTouchStart={(e) => (touchX.current = editing ? null : e.touches[0].clientX)}
       onTouchEnd={(e) => {
-        if (touchX.current === null) return;
+        if (touchX.current === null || editing) return;
         const dx = e.changedTouches[0].clientX - touchX.current;
         touchX.current = null;
         // RTL: swiping right brings the next photo, like turning a Hebrew page.
@@ -182,6 +205,24 @@ function Viewer({
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          {canTag && (
+            <button
+              type="button"
+              onClick={() => setTagging((t) => !t)}
+              aria-pressed={tagging}
+              aria-label={tagging ? "סיום תיוג" : "תיוג פנים"}
+              className={`flex items-center gap-1.5 rounded-full px-4 py-2.5 transition-colors ${
+                tagging ? "bg-sun text-ink" : "bg-white/10 hover:bg-white/20"
+              }`}
+            >
+              <svg aria-hidden viewBox="0 0 24 24" className="h-5 w-5 fill-none stroke-current stroke-2">
+                <path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2" strokeLinecap="round" />
+                <circle cx="12" cy="10" r="2.5" />
+                <path d="M8 16.5c.8-1.6 2.3-2.5 4-2.5s3.2.9 4 2.5" strokeLinecap="round" />
+              </svg>
+              <span className="hidden sm:inline">{tagging ? "סיום תיוג" : "תיוג"}</span>
+            </button>
+          )}
           <button
             type="button"
             onClick={share}
@@ -209,12 +250,14 @@ function Viewer({
       <div className="relative flex min-h-0 flex-1 items-center justify-center p-2 phone-landscape:p-0 sm:p-6">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
+          ref={img}
           key={photo.id}
           src={`/api/photo/${photo.id}/full`}
           alt=""
           className="max-h-full max-w-full rounded-md object-contain phone-landscape:rounded-none"
           style={{ backgroundImage: `url(/api/photo/${photo.id}/thumb)`, backgroundSize: "cover" }}
         />
+        {tagging && <FaceTagger key={`tag-${photo.id}`} photoId={photo.id} imgRef={img} onEditing={onEditing} />}
         {hasPrev && (
           <button
             type="button"

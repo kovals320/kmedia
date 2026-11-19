@@ -73,6 +73,7 @@ export default async function PersonPage({ params, searchParams }: Props) {
           initialIndex={initialIndex >= 0 ? initialIndex : null}
           path={`/photos/people/${person.id}`}
           shareTitle={`תמונה של ${person.name}`}
+          canTag
         />
       )}
     </main>

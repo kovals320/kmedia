@@ -5,6 +5,8 @@ import { yearInTitle } from "@/lib/sort";
 import type { Video } from "@/lib/youtube";
 import { useOverlay } from "@/lib/useOverlay";
 import { matches, queryWords } from "@/lib/search";
+import { NewLabel } from "@/components/WhatsNew";
+import { useSince } from "@/lib/whatsNew";
 
 type Group = { label: string; items: { video: Video; index: number }[] };
 
@@ -23,6 +25,7 @@ function groupByYear(videos: Video[]): Group[] {
 
 export function VideoBrowser({ videos, initialIndex }: { videos: Video[]; initialIndex: number | null }) {
   const [current, setCurrent] = useState<number | null>(null);
+  const since = useSince(); // previous visit: films added after it get a "new" label
   const [query, setQuery] = useState("");
   const { markOpened, close } = useOverlay(current !== null, () => setCurrent(null));
 
@@ -120,6 +123,9 @@ export function VideoBrowser({ videos, initialIndex }: { videos: Video[]; initia
                       loading="lazy"
                       className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
                     />
+                    {since !== null && v.addedAt && Date.parse(v.addedAt) / 1000 > since && (
+                      <NewLabel className="right-1.5 top-1.5 px-2 py-0.5 text-xs" />
+                    )}
                     {v.duration && (
                       <span dir="ltr" className="absolute bottom-1.5 left-1.5 rounded-md bg-ink/80 px-1.5 py-0.5 text-xs font-semibold text-white sm:text-sm">
                         {v.duration}

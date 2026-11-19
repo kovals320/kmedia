@@ -5,6 +5,7 @@ import { getYears, type YearSummary } from "@/lib/immich";
 import { PeopleRow, PeopleRowFallback } from "./PeopleRow";
 import { showPeople } from "@/lib/settings";
 import { connection } from "next/server";
+import { NewInYear } from "@/components/WhatsNew";
 
 export const metadata = { title: "תמונות – קיבוץ ניר אליהו - מדיה" };
 
@@ -66,6 +67,7 @@ export default async function PhotosPage() {
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={`/api/photo/${y.coverId}/thumb`} alt="" loading="lazy" className="h-full w-full object-cover" />
                     )}
+                    <NewInYear year={y.year} />
                   </div>
                 </div>
                 <p className="mt-3 font-display text-2xl leading-none">{y.year}</p>

@@ -18,6 +18,7 @@ export type Photo = {
   w: number | null;
   h: number | null;
   t: string | null; // local date-time the photo was taken
+  a?: number; // when it was added to Immich, in seconds since 1970 (for "new" labels)
 };
 
 function config() {
@@ -51,6 +52,7 @@ type SearchItem = {
   height?: number | null;
   localDateTime?: string | null;
   fileCreatedAt?: string | null;
+  createdAt?: string | null; // when Immich added it
   originalFileName?: string | null;
   isTrashed?: boolean;
   isFavorite?: boolean;
@@ -143,6 +145,7 @@ const getFolderPhotos = unstable_cache(
           folder,
           file: item.originalFileName ?? "",
           fav: Boolean(item.isFavorite),
+          ...(item.createdAt ? { a: Math.floor(Date.parse(item.createdAt) / 1000) || undefined } : {}),
         });
       }
       const next: number = res.assets.nextPage ? Number(res.assets.nextPage) : NaN;
@@ -150,7 +153,7 @@ const getFolderPhotos = unstable_cache(
     }
     return photos;
   },
-  ["immich-folder-photos-v7"],
+  ["immich-folder-photos-v8"],
   { revalidate: HOUR, tags: [IMMICH_CACHE_TAG] },
 );
 
@@ -166,7 +169,26 @@ function photoYear(p: CatalogPhoto) {
   return y && /^\d{4}$/.test(y) ? y : p.folder;
 }
 
-const strip = ({ id, w, h, t }: CatalogPhoto): Photo => ({ id, w, h, t });
+const strip = ({ id, w, h, t, a }: CatalogPhoto): Photo => ({ id, w, h, t, ...(a ? { a } : {}) });
+
+/**
+ * Photos added to Immich in the last few months, grouped by minute and year:
+ * [minute (seconds since 1970), year, how many]. Small enough to send to every visitor,
+ * who then counts what was added since their last visit.
+ */
+export async function getRecentAdditions(days = 120): Promise<[number, string, number][]> {
+  const from = Math.floor(Date.now() / 1000) - days * 86400;
+  const buckets = new Map<string, number>();
+  for (const p of await getCatalog()) {
+    if (!p.a || p.a < from) continue;
+    const key = `${Math.floor(p.a / 60) * 60}|${photoYear(p)}`;
+    buckets.set(key, (buckets.get(key) ?? 0) + 1);
+  }
+  return [...buckets.entries()].map(([k, n]) => {
+    const [m, y] = k.split("|");
+    return [Number(m), y, n] as [number, string, number];
+  });
+}
 
 /** Days since 1970 in Israel time, so the chosen cover changes once a day at midnight. */
 function dayNumber() {
@@ -351,10 +373,12 @@ export async function getPersonPhotos(
   return { ...person, photos: photos.map(strip) };
 }
 
-/** The face picture Immich chose for a named person. */
+/** The face picture Immich chose for a person (named, or unnamed for the "who is this?" page). Hidden people never. */
 export async function fetchPersonImage(personId: string) {
   if (!UUID.test(personId)) return null;
-  if (!(await namedPeople()).some((p) => p.id === personId)) return null; // never serve unnamed faces
+  const known =
+    (await namedPeople()).some((p) => p.id === personId) || (await getUnnamedPeople()).includes(personId);
+  if (!known) return null;
   const { base, key } = config();
   const res = await fetch(`${base}/api/people/${personId}/thumbnail`, {
     headers: { "x-api-key": key },
@@ -362,4 +386,45 @@ export async function fetchPersonImage(personId: string) {
   });
   if (!res.ok || !res.body) return null;
   return { body: res.body, type: res.headers.get("content-type") ?? "image/jpeg" };
+}
+
+/** Names of the named people, sorted (offered while typing a suggestion). */
+export async function getPeopleNames(): Promise<string[]> {
+  return [...new Set((await namedPeople()).map((p) => p.name))].sort((a, b) => heCollator.compare(a, b));
+}
+
+/**
+ * Face groups Immich found but nobody has named yet (people hidden in Immich are
+ * left out), in Immich's own order: the groups with the most photos first.
+ */
+export const getUnnamedPeople = unstable_cache(
+  async (): Promise<string[]> => {
+    const ids: string[] = [];
+    for (let page = 1; page < 50; page++) {
+      const res = await immich<PeopleResponse>(`/api/people?size=1000&page=${page}&withHidden=false`);
+      for (const p of res.people) if (!p.isHidden && !p.name?.trim()) ids.push(p.id);
+      if (!res.hasNextPage || res.people.length === 0) break;
+    }
+    return ids;
+  },
+  ["immich-unnamed-people-v1"],
+  { revalidate: HOUR, tags: [IMMICH_CACHE_TAG] },
+);
+
+/** One person as Immich has it now (null if not found). */
+export async function getImmichPerson(personId: string): Promise<PersonDto | null> {
+  if (!UUID.test(personId)) return null;
+  try {
+    return await immich<PersonDto>(`/api/people/${personId}`);
+  } catch {
+    return null;
+  }
+}
+
+/** A few photos of a face group, to help recognise who it is. Only photos from the year folders. */
+export async function getPersonSamplePhotos(personId: string, count = 6): Promise<string[]> {
+  if (!UUID.test(personId)) return [];
+  const [ids, catalog] = await Promise.all([personAssetIds(personId), getCatalog()]);
+  const onSite = new Set(catalog.map((p) => p.id));
+  return ids.filter((id) => onSite.has(id)).slice(0, count);
 }

@@ -14,6 +14,7 @@ export type Video = {
   thumbnail: string;
   publishedAt: string | null;
   duration: string | null; // e.g. "4:07" or "1:02:15"
+  addedAt?: string | null; // when it was added to the playlist (for "new" labels)
 };
 
 type Thumbs = Record<string, { url: string } | undefined>;
@@ -53,7 +54,7 @@ function formatDuration(iso: string | undefined) {
 type PlaylistItemsResponse = {
   nextPageToken?: string;
   items: {
-    snippet: { title: string; thumbnails?: Thumbs; resourceId: { videoId: string } };
+    snippet: { title: string; publishedAt?: string; thumbnails?: Thumbs; resourceId: { videoId: string } };
     contentDetails?: { videoPublishedAt?: string };
     status?: { privacyStatus?: string };
   }[];
@@ -84,6 +85,7 @@ export async function getPlaylistVideos(playlistId: string): Promise<Video[]> {
         thumbnail: bestThumb(item.snippet.thumbnails, id),
         publishedAt: item.contentDetails?.videoPublishedAt ?? null,
         duration: null,
+        addedAt: item.snippet.publishedAt ?? null,
       });
     }
     pageToken = page.nextPageToken;

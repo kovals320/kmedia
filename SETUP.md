@@ -391,3 +391,57 @@ What worked / didn't from Claude's side (cloud session):
 - Immich admin work over SSH is easiest through Immich's REST API with a temporary API key read with
   `read -rsp` (never pasted into the chat), deleted at the end. Keys and tokens never go in the chat.
 - Cloudflare Tunnel route to Immich must use the server's LAN IP, not `localhost`.
+
+## 13. Features ported from the family app (2026-11-19)
+
+Source: `kovals320/media`, `PORTING.md`. All of 1–4 follow the People switch on the admin page: while it is off,
+none of it is shown and the APIs answer 404.
+
+1. **People search** above the face row on the Photos page (`PeopleStrip.tsx`, Hebrew-tolerant `src/lib/search.ts`).
+   Without a search: the 16 people with the most photos; with one: everyone who matches; Enter opens a single match.
+2. **Face tagging** in the photo viewer: "תיוג" button, frames on the faces Immich found (`FaceTagger.tsx`,
+   `/api/photo/[id]/faces`). Visitors suggest a name (optionally their own name); saved by `/api/suggest`.
+3. **Admin approval** at the top of the admin page ("הצעות לתיוג פנים"). Approving writes into Immich (`src/lib/faces.ts`):
+   unnamed group → whole group gets the name, or is merged into the person who already has it;
+   face already named as someone else → only that face moves (person created if new).
+4. **"מי זה?"** (`/photos/who`): every unnamed, not hidden face group (most photos first), linked from the Photos page.
+   Sample photos come only from the year folders. Unnamed face pictures are served by `/api/person/[id]` only for these.
+5. **"New since your last visit"**: `src/lib/whatsNew.ts` (localStorage `kmedia-last-visit`, sessionStorage
+   `kmedia-visit-since`), `src/components/WhatsNew.tsx`, `/api/whats-new` (cached 10 min; photos by Immich `createdAt`,
+   films by playlist `snippet.publishedAt`). Strip on the home page, badge on year tiles, "חדש" on photos and films.
+   First visit on a phone shows nothing. A file moved out and back into the photos folder counts as new after a rescan.
+
+Supabase: table `kmedia_face_suggestions` (migration `kmedia_face_suggestions`): anyone may insert a pending row;
+only the admin (`kmedia_is_admin()`) reads, approves, rejects, deletes. Either a face (`asset_id`, `face_id`, `box`,
+`aspect`) or a whole group (`person_id`, no `face_id`).
+
+**Immich write key (by hand):** the main key stays read-only. Tagging needs a second key in Vercel as
+`IMMICH_TAG_API_KEY` with `asset.read, face.read, face.update, person.read, person.create, person.update, person.merge`.
+Create it ON THE SERVER (keys copied from the web page were rejected in the family app), `ssh kne@192.168.1.3`:
+```bash
+cat > /tmp/mkkey.py <<'PYEOF'
+import json, getpass, urllib.request as u
+B = "http://localhost:2283/api"
+def req(path, data=None, h={}, method=None):
+    r = u.Request(B + path, data=json.dumps(data).encode() if data is not None else None,
+                  headers={"Content-Type": "application/json", **h}, method=method)
+    body = u.urlopen(r).read()
+    return json.loads(body) if body else None
+t = req("/auth/login", {"email": input("Immich email: "), "password": getpass.getpass("Immich password: ")})["accessToken"]
+auth = {"Authorization": "Bearer " + t}
+for k in req("/api-keys", h=auth):
+    if k["name"] == "kmedia-tagging":
+        req("/api-keys/" + k["id"], h=auth, method="DELETE"); print("deleted old key")
+perms = ["asset.read","face.read","face.update","person.read","person.create","person.update","person.merge"]
+key = req("/api-keys", {"name": "kmedia-tagging", "permissions": perms}, auth)["secret"]
+req("/people?size=1", h={"x-api-key": key})
+print("\nTEST OK. New key (paste into Vercel, do not send it here):\n" + key)
+PYEOF
+python3 /tmp/mkkey.py; rm /tmp/mkkey.py
+```
+Then Vercel → kmedia → Settings → Environment Variables → `IMMICH_TAG_API_KEY` (Sensitive) → Redeploy.
+`/api/health` shows `"tagging": "connected"`. Without it, the rest works and the viewer says tagging isn't enabled yet.
+
+Also: Next.js updated 16.4.2 → 16.4.6 (npm audit: moderate advisories GHSA-mfr8-8qww-v76h / GHSA-vc7v-qv4w-wrv8, fixed in 16.4.5).
+Fixed while porting: the tagging layer and the photo shared a React key (also present in the family app).
+
