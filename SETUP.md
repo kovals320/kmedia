@@ -404,6 +404,9 @@ none of it is shown and the APIs answer 404.
 3. **Admin approval** at the top of the admin page ("הצעות לתיוג פנים"). Approving writes into Immich (`src/lib/faces.ts`):
    unnamed group → whole group gets the name, or is merged into the person who already has it;
    face already named as someone else → only that face moves (person created if new).
+   **"אישור כל ההצעות"** (shown from 2 pending suggestions, when the write key is set) approves them all as suggested,
+   oldest first, up to 40 per click. Suggestions that give different names to the same unnamed group or the same face
+   are skipped and stay for one-by-one decisions. A missing/denied key or a server error stops the run.
 4. **"מי זה?"** (`/photos/who`): every unnamed, not hidden face group (most photos first), linked from the Photos page.
    Sample photos come only from the year folders. Unnamed face pictures are served by `/api/person/[id]` only for these.
 5. **"New since your last visit"**: `src/lib/whatsNew.ts` (localStorage `kmedia-last-visit`, sessionStorage

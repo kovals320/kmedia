@@ -3,6 +3,7 @@
 import { useActionState, useTransition } from "react";
 import {
   addPlaylist,
+  approveAllSuggestions,
   approveSuggestion,
   refreshFromYouTube,
   rejectSuggestion,
@@ -164,3 +165,28 @@ export function SuggestionDecision({ id, name }: { id: string; name: string }) {
     </form>
   );
 }
+
+/** Approves every pending suggestion as suggested (conflicting ones are left for one-by-one decisions). */
+export function ApproveAllButton({ count }: { count: number }) {
+  const [state, action, pending] = useActionState(approveAllSuggestions, initial);
+  return (
+    <form
+      action={action}
+      onSubmit={(e) => {
+        if (!window.confirm(`לאשר את כל ${count} ההצעות בשמות שהוצעו? השמות ייכתבו ל-Immich. הצעות עם שמות סותרים לאותן פנים יישארו להחלטה שלכם.`))
+          e.preventDefault();
+      }}
+      className="mt-4 flex flex-wrap items-center gap-3"
+    >
+      <button
+        disabled={pending}
+        className="rounded-2xl bg-lake px-5 py-2.5 font-semibold text-white transition-colors hover:bg-lake-deep disabled:opacity-60"
+      >
+        {pending ? "מאשר…" : `אישור כל ההצעות (${count})`}
+      </button>
+      <span className="text-sm text-muted">כל הצעה תישמר בשם שהוצע. אפשר גם לאשר אחת-אחת למטה.</span>
+      <Feedback state={state} />
+    </form>
+  );
+}
+

@@ -5,6 +5,7 @@ import {
   AddPlaylistForm,
   RefreshYouTubeButton,
   RemoveButton,
+  ApproveAllButton,
   ShowPeopleToggle,
   SuggestionDecision,
   VideoTitleForm,
@@ -282,6 +283,8 @@ async function FaceSuggestions({ supabase, peopleOn }: { supabase: SupabaseClien
       {rows.length === 0 ? (
         <p className="mt-4 rounded-2xl bg-lake/10 p-4 text-lake-deep">אין הצעות שמחכות לאישור.</p>
       ) : (
+        <>
+        {enabled && rows.length >= 2 && <ApproveAllButton count={rows.length} />}
         <ul className="mt-4 divide-y divide-ink/10 rounded-2xl bg-white">
           {rows.map((r) => (
             <li key={r.id} className="flex gap-3 px-4 py-3">
@@ -297,6 +300,7 @@ async function FaceSuggestions({ supabase, peopleOn }: { supabase: SupabaseClien
             </li>
           ))}
         </ul>
+        </>
       )}
       {done.length > 0 && (
         <details className="mt-3 rounded-2xl bg-white">
